@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'kids_setup_page.dart';
+import 'package:flutter/services.dart';
 
 class CreateKidAccountPage extends StatefulWidget {
   const CreateKidAccountPage({super.key});
@@ -16,7 +17,7 @@ class _CreateKidAccountPageState extends State<CreateKidAccountPage> {
   String selectedAvatar = 'assets/avatar1.png';
   final TextEditingController nameController = TextEditingController();
   final TextEditingController dobController = TextEditingController();
-  final TextEditingController numberController = TextEditingController();
+  final TextEditingController numberController = TextEditingController(text: '09');
   final TextEditingController passwordController = TextEditingController();
 
   void _showAvatarPicker() {
@@ -124,6 +125,11 @@ class _CreateKidAccountPageState extends State<CreateKidAccountPage> {
       return;
     }
 
+    if (!RegExp(r'^09\d{9}$').hasMatch(phone)) {
+      _showSnackbar('Phone number must start with 09 and be 11 digits', isError: true);
+      return;
+    }
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -221,7 +227,7 @@ class _CreateKidAccountPageState extends State<CreateKidAccountPage> {
                     _buildField(dobController, onTap: _pickDate, readOnly: true),
                     const SizedBox(height: 20),
                     _buildLabel('Number'),
-                    _buildField(numberController, keyboardType: TextInputType.phone),
+                    _buildField(numberController, keyboardType: TextInputType.phone,  isContactNumber: true,),
                     const SizedBox(height: 20),
                     _buildLabel('Password'),
                     _buildField(passwordController, obscure: true),
@@ -280,6 +286,7 @@ class _CreateKidAccountPageState extends State<CreateKidAccountPage> {
     int? maxLength,
     TextInputType? keyboardType,
     void Function()? onTap,
+    bool isContactNumber = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -291,7 +298,7 @@ class _CreateKidAccountPageState extends State<CreateKidAccountPage> {
         controller: controller,
         obscureText: obscure,
         readOnly: readOnly,
-        maxLength: maxLength,
+        maxLength: isContactNumber ? 11 : maxLength,
         keyboardType: keyboardType,
         onTap: onTap,
         obscuringCharacter: '*',
@@ -304,6 +311,12 @@ class _CreateKidAccountPageState extends State<CreateKidAccountPage> {
           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           border: InputBorder.none,
         ),
+        inputFormatters: isContactNumber
+            ? [
+                // Allow only digits
+                FilteringTextInputFormatter.digitsOnly,
+              ]
+            : null,
       ),
     );
   }

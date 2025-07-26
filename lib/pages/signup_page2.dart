@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'login_page.dart';
 
 class SignupCardPage extends StatefulWidget {
@@ -34,7 +35,13 @@ class _SignupCardPageState extends State<SignupCardPage> {
   late TextEditingController _expController;
   late TextEditingController _ccvController;
 
+  final _formKey = GlobalKey<FormState>();
+  final FocusNode _cardFocus = FocusNode();
+  final FocusNode _expFocus = FocusNode();
+  final FocusNode _ccvFocus = FocusNode();
+
   final bool _obscureCcv = true;
+  bool _submitted = false;
 
   @override
   void initState() {
@@ -104,18 +111,21 @@ class _SignupCardPageState extends State<SignupCardPage> {
       });
 
       _showTopSnackBar('Account registered successfully!', isError: false);
-
-      // Wait for the snackbar to finish
       await Future.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-      // Navigate to the login page
-      Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (_) => const LoginPage()),
-        );
+      if (!mounted) return;
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginPage()));
     } catch (e) {
       _showTopSnackBar('Error: ${e.toString()}');
     }
   }
+
+  OutlineInputBorder _buildBorder(bool isValid) => OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide(
+          color: isValid ? Colors.black : Colors.red,
+          width: 3,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -144,172 +154,190 @@ class _SignupCardPageState extends State<SignupCardPage> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.black, width: 3),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Name on Card',
-                        style: GoogleFonts.fredoka(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black, width: 3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: TextField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: const Color(0xFFAEDDFF),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide.none,
-                            ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Name on Card',
+                          style: GoogleFonts.fredoka(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Card Number',
-                        style: GoogleFonts.fredoka(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black, width: 3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: TextField(
-                          controller: _cardNumberController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: const Color(0xFFAEDDFF),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Exp',
-                                  style: GoogleFonts.fredoka(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.black, width: 3),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: TextField(
-                                    controller: _expController,
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: const Color(0xFFAEDDFF),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'CCV',
-                                  style: GoogleFonts.fredoka(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.black, width: 3),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: TextField(
-                                    controller: _ccvController,
-                                    obscureText: _obscureCcv,
-                                    keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: const Color(0xFFAEDDFF),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: Container(
+                        const SizedBox(height: 8),
+                        Container(
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black, width: 3),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_nameController.text.isEmpty ||
-                                  _cardNumberController.text.isEmpty ||
-                                  _expController.text.isEmpty ||
-                                  _ccvController.text.isEmpty) {
-                                _showTopSnackBar('Please fill out all fields!');
-                              } else {
-                                _registerUser();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4e88cf),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              elevation: 0,
+                          child: TextFormField(
+                            controller: _nameController,
+                            textInputAction: TextInputAction.next,
+                            onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_cardFocus),
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: const Color(0xFFAEDDFF),
+                              border: _buildBorder(true),
                             ),
-                            child: Text(
-                              'Register',
-                              style: GoogleFonts.fredoka(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Card Number',
+                          style: GoogleFonts.fredoka(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _cardNumberController,
+                          focusNode: _cardFocus,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(16),
+                          ],
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_expFocus),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFFAEDDFF),
+                            border: _buildBorder(!_submitted || _cardNumberController.text.length == 16),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Exp',
+                                    style: GoogleFonts.fredoka(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final now = DateTime.now();
+                                      final picked = await showDatePicker(
+                                        context: context,
+                                        initialDate: now,
+                                        firstDate: now,
+                                        lastDate: DateTime(now.year + 10),
+                                      );
+                                      if (picked != null) {
+                                        setState(() {
+                                          _expController.text =
+                                              "${picked.month.toString().padLeft(2, '0')}/${picked.year.toString().substring(2)}";
+                                        });
+                                      }
+                                    },
+                                    child: AbsorbPointer(
+                                      child: TextFormField(
+                                        controller: _expController,
+                                        focusNode: _expFocus,
+                                        textInputAction: TextInputAction.next,
+                                        onFieldSubmitted: (_) =>
+                                            FocusScope.of(context).requestFocus(_ccvFocus),
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: const Color(0xFFAEDDFF),
+                                          border: _buildBorder(!_submitted || _expController.text.isNotEmpty),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'CCV',
+                                    style: GoogleFonts.fredoka(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextFormField(
+                                    controller: _ccvController,
+                                    focusNode: _ccvFocus,
+                                    obscureText: _obscureCcv,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      LengthLimitingTextInputFormatter(4),
+                                    ],
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFAEDDFF),
+                                      border: _buildBorder(!_submitted || _ccvController.text.length == 4),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.black, width: 3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() => _submitted = true);
+
+                                final cardNumber = _cardNumberController.text.trim();
+                                final ccv = _ccvController.text.trim();
+
+                                if (_nameController.text.isEmpty ||
+                                    cardNumber.isEmpty ||
+                                    _expController.text.isEmpty ||
+                                    ccv.isEmpty) {
+                                  _showTopSnackBar('Please fill out all fields!');
+                                } else if (cardNumber.length != 16) {
+                                  _showTopSnackBar('Card number must be 16 digits!');
+                                } else if (ccv.length != 4) {
+                                  _showTopSnackBar('CCV must be 4 digits!');
+                                } else {
+                                  _registerUser();
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4e88cf),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Register',
+                                style: GoogleFonts.fredoka(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -317,7 +345,6 @@ class _SignupCardPageState extends State<SignupCardPage> {
                   alignment: Alignment.center,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Pass back card info on back navigation
                       Navigator.pop(context, {
                         'cardName': _nameController.text.trim(),
                         'cardNumber': _cardNumberController.text.trim(),

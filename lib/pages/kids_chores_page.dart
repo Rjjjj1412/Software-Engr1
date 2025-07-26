@@ -187,7 +187,7 @@ class _KidsChoresPageState extends State<KidsChoresPage> {
                               Text(
                                 "$kidName's Chores",
                                 style: GoogleFonts.fredoka(
-                                  fontSize: 36,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

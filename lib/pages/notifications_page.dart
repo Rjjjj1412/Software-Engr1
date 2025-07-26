@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'parent_drawer.dart';
-import 'package:flutter/services.dart';
 
 class ParentNotificationsPage extends StatefulWidget {
   const ParentNotificationsPage({super.key});
@@ -60,22 +59,38 @@ class _ParentNotificationsPageState extends State<ParentNotificationsPage> {
   }
 
   /// Show reward modal and reward chore
-void showRewardChoreModal(
+Future<void> showRewardChoreModal(
   BuildContext context,
-  String notifId, // Notification document ID
+  String notifId,
   String kidName,
   String kidId,
   String avatar,
   String choreTitle,
-  double defaultReward,
-  Function onRewarded,
-) {
-  final TextEditingController amountController =
-      TextEditingController(text: defaultReward.toStringAsFixed(2));
+  VoidCallback onRewarded, // ✅ proper function type
+) async {
   final TextEditingController messageController = TextEditingController();
   final FocusNode messageFocusNode = FocusNode();
+  double rewardAmount = 0.0;
 
-  double rewardAmount = defaultReward;
+  // 🔍 Fetch reward_money from Firestore
+  try {
+    final choreQuery = await FirebaseFirestore.instance
+        .collection('chores')
+        .where('kid_id', isEqualTo: kidId)
+        .where('chore_title', isEqualTo: choreTitle)
+        .limit(1)
+        .get();
+
+    if (choreQuery.docs.isNotEmpty) {
+      final choreData = choreQuery.docs.first.data();
+      rewardAmount = (choreData['reward_money'] ?? 0).toDouble();
+    }
+  } catch (e) {
+    debugPrint("Error fetching reward_money: $e");
+  }
+
+  final TextEditingController amountController =
+      TextEditingController(text: rewardAmount.toStringAsFixed(2));
 
   showDialog(
     context: context,
@@ -100,7 +115,6 @@ void showRewardChoreModal(
                 builder: (context, setModalState) {
                   return Stack(
                     children: [
-                      // Avatar Image
                       Positioned(
                         top: 0,
                         right: 0,
@@ -132,94 +146,43 @@ void showRewardChoreModal(
                           ),
                           const SizedBox(height: 20),
 
-                          // Reward Amount Section
+                          // 💰 Read-only Reward Amount Field
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Decrement Button
-                              InkWell(
-                                onTap: () {
-                                  setModalState(() {
-                                    if (rewardAmount > 1) {
-                                      rewardAmount -= 1;
-                                      amountController.text =
-                                          rewardAmount.toStringAsFixed(2);
-                                    }
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFCA26),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: Colors.black, width: 2),
-                                  ),
-                                  child: const Icon(Icons.remove, size: 20),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-
-                              // Amount Text Field (Only numbers allowed)
                               SizedBox(
-                                width: 100,
+                                width: 120,
                                 child: TextField(
                                   controller: amountController,
-                                  focusNode: FocusNode(), // Prevent auto-focus
+                                  readOnly: true,
+                                  enabled: false,
                                   textAlign: TextAlign.center,
-                                  keyboardType: TextInputType.numberWithOptions(
-                                      decimal: true),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                        RegExp(r'^\d+\.?\d{0,2}')), // Allow numbers and decimal
-                                  ],
                                   decoration: InputDecoration(
+                                    labelText: "Reward",
                                     contentPadding:
                                         const EdgeInsets.symmetric(vertical: 10),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
+                                    disabledBorder: OutlineInputBorder(
+                                      borderSide: const BorderSide(
+                                          color: Colors.black, width: 2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  onChanged: (value) {
-                                    setModalState(() {
-                                      rewardAmount =
-                                          double.tryParse(value) ?? 0;
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-
-                              // Increment Button
-                              InkWell(
-                                onTap: () {
-                                  setModalState(() {
-                                    rewardAmount += 1;
-                                    amountController.text =
-                                        rewardAmount.toStringAsFixed(2);
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFCA26),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: Colors.black, width: 2),
-                                  ),
-                                  child: const Icon(Icons.add, size: 20),
+                                  style: const TextStyle(color: Colors.black),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
 
-                          // Message Field (Auto-focus)
+                          // ✉️ Message Field
                           TextField(
                             controller: messageController,
                             focusNode: messageFocusNode,
                             maxLines: 2,
-                            autofocus: true, // Auto-focus this field
+                            autofocus: true,
                             decoration: InputDecoration(
                               labelText: "Message for Kid (required)",
                               filled: true,
@@ -231,7 +194,7 @@ void showRewardChoreModal(
                           ),
                           const SizedBox(height: 20),
 
-                          // Confirm Button
+                          // ✅ Confirm Button
                           ElevatedButton(
                             onPressed: () async {
                               final String message =
@@ -239,15 +202,15 @@ void showRewardChoreModal(
                               final enteredAmount = double.tryParse(
                                   amountController.text.trim());
 
-                              // ⚠️ Error checks
                               if (enteredAmount == null || enteredAmount <= 0) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      "⚠️ Please enter a valid reward amount.",
+                                      "⚠️ Invalid reward amount.",
                                       style: GoogleFonts.fredoka(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                     backgroundColor: Colors.red,
                                     behavior: SnackBarBehavior.floating,
@@ -262,8 +225,9 @@ void showRewardChoreModal(
                                     content: Text(
                                       "⚠️ Please enter a message for the kid.",
                                       style: GoogleFonts.fredoka(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                     backgroundColor: Colors.red,
                                     behavior: SnackBarBehavior.floating,
@@ -273,7 +237,6 @@ void showRewardChoreModal(
                               }
 
                               try {
-                                // 1. Update kid's balance
                                 final paymentDoc = FirebaseFirestore.instance
                                     .collection('kids_payment_info')
                                     .doc(kidId);
@@ -295,7 +258,6 @@ void showRewardChoreModal(
                                   'last_updated': FieldValue.serverTimestamp(),
                                 });
 
-                                // 2. Update notification & chore status
                                 await FirebaseFirestore.instance
                                     .collection('notifications')
                                     .doc(notifId)
@@ -314,7 +276,6 @@ void showRewardChoreModal(
                                       .update({'status': 'rewarded'});
                                 }
 
-                                // 3. Add kids notification with message
                                 await FirebaseFirestore.instance
                                     .collection('kids_notifications')
                                     .add({
@@ -326,8 +287,8 @@ void showRewardChoreModal(
                                   'type': 'reward',
                                 });
 
-                                Navigator.pop(context); // Close modal
-                                onRewarded(); // Refresh parent list
+                                Navigator.pop(context);
+                                onRewarded();
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -348,8 +309,9 @@ void showRewardChoreModal(
                                     content: Text(
                                       "❌ Failed to reward chore. Try again.",
                                       style: GoogleFonts.fredoka(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white),
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                     backgroundColor: Colors.red,
                                     behavior: SnackBarBehavior.floating,
@@ -359,8 +321,7 @@ void showRewardChoreModal(
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF60C56F),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                                 side: const BorderSide(
@@ -389,7 +350,7 @@ void showRewardChoreModal(
     },
   );
 
-  // Autofocus message field when modal opens
+  // 🔁 Focus message box after slight delay
   Future.delayed(const Duration(milliseconds: 300), () {
     FocusScope.of(context).requestFocus(messageFocusNode);
   });
@@ -513,7 +474,6 @@ void showRewardChoreModal(
                                         notif['kidId'],
                                         notif['avatar'],
                                         notif['choreTitle'],
-                                        1.00,
                                         () {
                                           setState(() {}); // Refresh
                                         },

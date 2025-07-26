@@ -333,6 +333,7 @@ void showManageFundsModal(
   String kidName,
   String kidId,
   String avatar,
+  {VoidCallback? onFundsUpdated}
 ) {
   final TextEditingController messageController = TextEditingController();
   final TextEditingController amountController =
@@ -497,14 +498,11 @@ void showManageFundsModal(
                               Expanded(
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    final String message =
-                                        messageController.text.trim();
+                                    final String message = messageController.text.trim();
                                     if (message.isEmpty || fundAmount <= 0) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                              "⚠️ Enter a message and valid amount."),
+                                          content: Text("⚠️ Enter a message and valid amount."),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -519,20 +517,16 @@ void showManageFundsModal(
                                       final docSnapshot = await docRef.get();
                                       double currentBalance = 0;
                                       if (docSnapshot.exists) {
-                                        currentBalance = (docSnapshot
-                                                    .data()?['usable_balance'] ??
-                                                0)
-                                            .toDouble();
+                                        currentBalance =
+                                            (docSnapshot.data()?['usable_balance'] ?? 0).toDouble();
                                       }
 
-                                      final newBalance =
-                                          currentBalance + fundAmount;
+                                      final newBalance = currentBalance + fundAmount;
 
                                       // Update balance
                                       await docRef.set({
                                         'usable_balance': newBalance,
-                                        'last_updated':
-                                            FieldValue.serverTimestamp(),
+                                        'last_updated': FieldValue.serverTimestamp(),
                                       });
 
                                       // Push notification
@@ -543,30 +537,28 @@ void showManageFundsModal(
                                         'type': 'deposit',
                                         'amount': fundAmount,
                                         'message': message,
-                                        'timestamp':
-                                            FieldValue.serverTimestamp(),
+                                        'timestamp': FieldValue.serverTimestamp(),
                                       });
 
+                                      // Call the callback BEFORE closing the dialog
+                                      if (onFundsUpdated != null) onFundsUpdated();
+
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             "✅ Deposited \$${fundAmount.toStringAsFixed(2)} successfully!",
-                                            style: GoogleFonts.fredoka(
-                                                fontWeight: FontWeight.bold),
+                                            style: GoogleFonts.fredoka(fontWeight: FontWeight.bold),
                                           ),
                                           backgroundColor: Colors.green,
                                         ),
                                       );
                                     } catch (e) {
-                                      debugPrint(
-                                          "Error during deposit: $e");
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      debugPrint("Error during deposit: $e");
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                              "❌ Failed to deposit funds."),
+                                          content: Text("❌ Failed to deposit funds."),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -596,14 +588,11 @@ void showManageFundsModal(
                               Expanded(
                                 child: ElevatedButton(
                                   onPressed: () async {
-                                    final String message =
-                                        messageController.text.trim();
+                                    final String message = messageController.text.trim();
                                     if (message.isEmpty || fundAmount <= 0) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                              "⚠️ Enter a message and valid amount."),
+                                          content: Text("⚠️ Enter a message and valid amount."),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -618,32 +607,26 @@ void showManageFundsModal(
                                       final docSnapshot = await docRef.get();
                                       double currentBalance = 0;
                                       if (docSnapshot.exists) {
-                                        currentBalance = (docSnapshot
-                                                    .data()?['usable_balance'] ??
-                                                0)
-                                            .toDouble();
+                                        currentBalance =
+                                            (docSnapshot.data()?['usable_balance'] ?? 0).toDouble();
                                       }
 
                                       if (fundAmount > currentBalance) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
+                                        ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(
-                                            content: Text(
-                                                "❌ Insufficient balance for withdrawal."),
+                                            content: Text("❌ Insufficient balance for withdrawal."),
                                             backgroundColor: Colors.red,
                                           ),
                                         );
                                         return;
                                       }
 
-                                      final newBalance =
-                                          currentBalance - fundAmount;
+                                      final newBalance = currentBalance - fundAmount;
 
                                       // Update balance
                                       await docRef.set({
                                         'usable_balance': newBalance,
-                                        'last_updated':
-                                            FieldValue.serverTimestamp(),
+                                        'last_updated': FieldValue.serverTimestamp(),
                                       });
 
                                       // Push notification
@@ -654,30 +637,28 @@ void showManageFundsModal(
                                         'type': 'withdrawal',
                                         'amount': fundAmount,
                                         'message': message,
-                                        'timestamp':
-                                            FieldValue.serverTimestamp(),
+                                        'timestamp': FieldValue.serverTimestamp(),
                                       });
 
+                                      // Call the callback BEFORE closing the dialog
+                                      if (onFundsUpdated != null) onFundsUpdated();
+
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             "✅ Withdrew \$${fundAmount.toStringAsFixed(2)} successfully!",
-                                            style: GoogleFonts.fredoka(
-                                                fontWeight: FontWeight.bold),
+                                            style: GoogleFonts.fredoka(fontWeight: FontWeight.bold),
                                           ),
                                           backgroundColor: Colors.green,
                                         ),
                                       );
                                     } catch (e) {
-                                      debugPrint(
-                                          "Error during withdrawal: $e");
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      debugPrint("Error during withdrawal: $e");
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                              "❌ Failed to withdraw funds."),
+                                          content: Text("❌ Failed to withdraw funds."),
                                           backgroundColor: Colors.red,
                                         ),
                                       );
@@ -923,6 +904,11 @@ void showManageFundsModal(
                                           kidName,
                                           kidId,
                                           kidAvatar,
+                                          onFundsUpdated: () {
+                                          setState(() {
+                                             _loadKidsData();
+                                          }); 
+                                           }
                                         );
                                       },
                                       style: ElevatedButton.styleFrom(
