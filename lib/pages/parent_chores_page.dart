@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'parent_drawer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ParentChoresPage extends StatefulWidget {
   const ParentChoresPage({super.key});
@@ -22,7 +23,14 @@ class _ParentChoresPageState extends State<ParentChoresPage> {
   }
 
   Future<void> loadKids() async {
-    final snapshot = await FirebaseFirestore.instance.collection('kids').get();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('kids')
+        .where('user_id', isEqualTo: user.uid) // Filter by parent account
+        .get();
+
     setState(() {
       kids = snapshot.docs.map((doc) {
         return {

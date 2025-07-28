@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'parent_drawer.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ParentNotificationsPage extends StatefulWidget {
   const ParentNotificationsPage({super.key});
@@ -13,8 +14,29 @@ class ParentNotificationsPage extends StatefulWidget {
 
 class _ParentNotificationsPageState extends State<ParentNotificationsPage> {
   /// Fetch notifications stream with kid info
-  Stream<List<Map<String, dynamic>>> getNotificationsStream() {
-    return FirebaseFirestore.instance
+  Stream<List<Map<String, dynamic>>> getNotificationsStream() async* {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      yield [];
+      return;
+    }
+
+    final familyAccountId = currentUser.uid;
+
+    // Step 1: Get all kids with matching family account user_id
+    final kidSnapshot = await FirebaseFirestore.instance
+        .collection('kids')
+        .where('user_id', isEqualTo: familyAccountId)
+        .get();
+
+    final kidIds = kidSnapshot.docs.map((doc) => doc.id).toList();
+    if (kidIds.isEmpty) {
+      yield [];
+      return;
+    }
+
+    // Step 2: Listen for all notifications, filter by matching kid_id
+    yield* FirebaseFirestore.instance
         .collection('notifications')
         .orderBy('timestamp', descending: true)
         .snapshots()
@@ -25,35 +47,26 @@ class _ParentNotificationsPageState extends State<ParentNotificationsPage> {
         final data = doc.data();
         final kidId = data['kid_id'];
 
-        // Fetch kid info from kids collection
-        final kidSnapshot = await FirebaseFirestore.instance
-            .collection('kids')
-            .doc(kidId)
-            .get();
+        if (!kidIds.contains(kidId)) continue; // Only include this parent's kids
 
-        String kidName = data['kid_name'] ?? 'Kid';
-        String avatarPath = 'assets/avatar1.png'; // Default avatar
-
-        if (kidSnapshot.exists) {
-          final kidData = kidSnapshot.data()!;
-          kidName = kidData['firstName'] ?? kidName;
-          avatarPath = kidData['avatar'] ?? avatarPath;
-        }
+        final kidDoc = kidSnapshot.docs.firstWhere((k) => k.id == kidId);
+        final kidData = kidDoc.data();
 
         notifications.add({
           'id': doc.id,
-          'type': data['type'], // withdrawal OR chore_completed
+          'type': data['type'],
           'kidId': kidId,
-          'kidName': kidName,
-          'avatar': avatarPath,
-          'choreTitle': data['chore_title'], // for chore_completed
-          'choreDesc': data['description'], // for chore_completed
-          'title': data['title'], // for withdrawal
-          'amount': data['amount'], // for withdrawal
+          'kidName': kidData['firstName'] ?? 'Kid',
+          'avatar': kidData['avatar'] ?? 'assets/avatar1.png',
+          'choreTitle': data['chore_title'],
+          'choreDesc': data['description'],
+          'title': data['title'],
+          'amount': data['amount'],
           'status': data['status'] ?? 'pending',
           'timestamp': data['timestamp'],
         });
       }
+
       return notifications;
     });
   }
