@@ -333,10 +333,11 @@ void _showEditKidModal(DocumentSnapshot kid) {
     'assets/avatar6.png',
   ];
 
-  final _formKey = GlobalKey<FormState>();
-  bool _passwordVisible = false;
+  final formKey = GlobalKey<FormState>();
+  bool passwordVisible = false;
 
-  void _showAvatarPickerModal() {
+  // Show avatar picker dialog and update the selectedAvatar in modal using setModalState
+  void showAvatarPickerModal(Function(void Function()) setModalState) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
@@ -351,7 +352,7 @@ void _showEditKidModal(DocumentSnapshot kid) {
               children: avatars.map((avatar) {
                 return GestureDetector(
                   onTap: () {
-                    setState(() {
+                    setModalState(() {
                       selectedAvatar = avatar;
                     });
                     Navigator.of(context).pop();
@@ -369,212 +370,214 @@ void _showEditKidModal(DocumentSnapshot kid) {
     );
   }
 
+  // Show the main edit modal
   showDialog(
     context: context,
     barrierDismissible: true,
     builder: (context) {
-      return StatefulBuilder(builder: (context, setModalState) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Edit Kid Account',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: GoogleFonts.fredoka().fontFamily,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: GestureDetector(
-                        onTap: _showAvatarPickerModal,
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundImage: AssetImage(selectedAvatar),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Text(
-                        'Tap avatar to change',
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Edit Kid Account',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
                           fontFamily: GoogleFonts.fredoka().fontFamily,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: nameController,
-                      decoration: _inputDecoration('Name'),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: dobController,
-                      decoration: _inputDecoration('Date of Birth'),
-                      readOnly: true,
-                      onTap: () async {
-                        FocusScope.of(context).unfocus();
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.tryParse(data['date_of_birth']) ?? DateTime(2015),
-                          firstDate: DateTime(2005),
-                          lastDate: DateTime.now(),
-                        );
-                        if (picked != null) {
-                          dobController.text =
-                              "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-                          setModalState(() {}); // refresh UI if needed
-                        }
-                      },
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: contactController,
-                      decoration: _inputDecoration('Contact Number'),
-                      keyboardType: TextInputType.phone,
-                      maxLength: 11,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Required';
-                        } else if (!RegExp(r'^09\d{9}$').hasMatch(value)) {
-                          return 'Must start with 09 and be 11 digits';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Password Field with visibility toggle
-                    TextFormField(
-                      controller: passwordController,
-                      decoration: _inputDecoration('New Password').copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(_passwordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off),
-                          onPressed: () {
-                            setModalState(() {
-                              _passwordVisible = !_passwordVisible;
-                            });
-                          },
-                        ),
-                      ),
-                      obscureText: !_passwordVisible,
-                      validator: (value) {
-                        // Only validate if user tries to enter a new password
-                        if (value != null && value.isNotEmpty) {
-                          if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Confirm Password Field
-                    TextFormField(
-                      controller: confirmPasswordController,
-                      decoration: _inputDecoration('Confirm New Password').copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(_passwordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off),
-                          onPressed: () {
-                            setModalState(() {
-                              _passwordVisible = !_passwordVisible;
-                            });
-                          },
-                        ),
-                      ),
-                      obscureText: !_passwordVisible,
-                      validator: (value) {
-                        // Only validate if password field is filled
-                        if ((passwordController.text.isNotEmpty)) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please confirm new password';
-                          } else if (value != passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (!_formKey.currentState!.validate()) return;
-
-                          Map<String, dynamic> updateData = {
-                            'firstName': nameController.text.trim(),
-                            'date_of_birth': dobController.text.trim(),
-                            'phone': contactController.text.trim(),
-                            'avatar': selectedAvatar,
-                          };
-
-                          // Update password only if new password provided
-                          if (passwordController.text.isNotEmpty) {
-                            updateData['password'] = passwordController.text.trim();
-                          }
-
-                          await FirebaseFirestore.instance
-                              .collection('kids')
-                              .doc(kid.id)
-                              .update(updateData);
-
-                          Navigator.of(context).pop();
-                          setState(() {});
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Kid updated successfully.'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4E88CF),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => showAvatarPickerModal(setModalState),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundImage: AssetImage(selectedAvatar),
                           ),
-                          side: const BorderSide(color: Colors.black, width: 2),
                         ),
+                      ),
+                      const SizedBox(height: 10),
+                      Center(
                         child: Text(
-                          'Save Changes',
+                          'Tap avatar to change',
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            fontSize: 14,
                             fontFamily: GoogleFonts.fredoka().fontFamily,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: nameController,
+                        decoration: _inputDecoration('Name'),
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: dobController,
+                        decoration: _inputDecoration('Date of Birth'),
+                        readOnly: true,
+                        onTap: () async {
+                          FocusScope.of(context).unfocus();
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.tryParse(data['date_of_birth']) ?? DateTime(2015),
+                            firstDate: DateTime(2005),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            dobController.text =
+                                "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+                            setModalState(() {});
+                          }
+                        },
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: contactController,
+                        decoration: _inputDecoration('Contact Number'),
+                        keyboardType: TextInputType.phone,
+                        maxLength: 11,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Required';
+                          } else if (!RegExp(r'^09\d{9}$').hasMatch(value)) {
+                            return 'Must start with 09 and be 11 digits';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: passwordController,
+                        decoration: _inputDecoration('New Password').copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(passwordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () {
+                              setModalState(() {
+                                passwordVisible = !passwordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: !passwordVisible,
+                        validator: (value) {
+                          if (value != null && value.isNotEmpty && value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: confirmPasswordController,
+                        decoration: _inputDecoration('Confirm New Password').copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(passwordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () {
+                              setModalState(() {
+                                passwordVisible = !passwordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        obscureText: !passwordVisible,
+                        validator: (value) {
+                          if (passwordController.text.isNotEmpty) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please confirm new password';
+                            } else if (value != passwordController.text) {
+                              return 'Passwords do not match';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (!formKey.currentState!.validate()) return;
+
+                            Map<String, dynamic> updateData = {
+                              'firstName': nameController.text.trim(),
+                              'date_of_birth': dobController.text.trim(),
+                              'phone': contactController.text.trim(),
+                              'avatar': selectedAvatar,
+                            };
+
+                            if (passwordController.text.isNotEmpty) {
+                              updateData['password'] = passwordController.text.trim();
+                            }
+
+                            try {
+                              await FirebaseFirestore.instance
+                                  .collection('kids')
+                                  .doc(kid.id)
+                                  .update(updateData);
+
+                              Navigator.of(context).pop();
+                              setState(() {});
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Kid updated successfully.'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to update: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4E88CF),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            side: const BorderSide(color: Colors.black, width: 2),
+                          ),
+                          child: Text(
+                            'Save Changes',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                              fontFamily: GoogleFonts.fredoka().fontFamily,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      });
+          );
+        },
+      );
     },
   );
 }
